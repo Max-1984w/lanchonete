@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pedidos online</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#f6f7f3;--card:#fff;--ink:#1f2a24;--mut:#66726b;--line:#e2e6df;--brand:#15803d;--accent:#dc2626;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121815;--card:#1c2520;--ink:#eef2ec;--mut:#9aa79f;--line:#2c3731;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Bricolage Grotesque",system-ui,sans-serif}
+#app{max-width:760px;margin:0 auto;padding:20px 16px 110px}
+h1{font-size:2rem;line-height:1.1;margin:0 0 6px;font-weight:800}
+h2{font-size:1.15rem;margin:26px 0 8px;font-weight:800;color:var(--brand)}
+p{margin:0}.mut{color:var(--mut)}
+.top{padding:18px 0 0}
+.top::after{content:"";display:block;height:6px;margin-top:14px;background:linear-gradient(90deg,var(--brand) 75%,var(--accent) 75%);border-radius:3px}
+.row{display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.price{font-weight:800;white-space:nowrap;color:var(--accent)}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:10px 16px;background:var(--brand);color:#fff;cursor:pointer}
+button:disabled{opacity:.6}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.sm{padding:6px 12px;font-size:.9rem}
+button.danger{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.step{display:flex;align-items:center;gap:10px}
+.step button{width:34px;height:34px;padding:0;font-size:1.2rem}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line)}
+.bar button{display:flex;width:100%;max-width:728px;margin:0 auto;justify-content:space-between;background:var(--accent)}
+label{display:block;font-weight:600;margin:12px 0 4px}
+input,textarea{width:100%;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+input[type=color]{height:44px;padding:4px}
+input[type=radio]{width:auto}
+.opts{display:flex;gap:16px}.opts label{font-weight:400;margin:0;display:flex;gap:6px;align-items:center}
+.big{font-size:4.5rem;font-weight:800;color:var(--accent);line-height:1;margin:10px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
+.tabs button{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.tabs button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.tag{display:inline-block;border-radius:99px;padding:2px 10px;font-size:.8rem;font-weight:600;background:var(--line)}
+.ord{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:12px;padding:14px;margin-bottom:10px}
+.ord.ok{border-left-color:var(--brand)}
+.ord .hd{display:flex;justify-content:space-between;align-items:center}
+.ord .n{font-size:1.6rem;font-weight:800}
+.ord ul{margin:8px 0;padding-left:18px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.err{color:var(--accent);font-weight:600;margin-top:8px}
+.foot{margin-top:30px;text-align:center}
+.foot button{background:none;color:var(--mut);font-weight:400;text-decoration:underline}
+.off{opacity:.55}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* ===== CONFIGURE AQUI (Supabase > Project Settings > API) ===== */
+const SUPABASE_URL="COLE_AQUI_A_URL_DO_PROJETO";
+const SUPABASE_KEY="COLE_AQUI_A_CHAVE_ANON_PUBLIC";
+/* ============================================================== */
+
+const $=s=>document.querySelector(s);
+const brl=n=>Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=n=>String(n).padStart(3,"0");
+const ST={novo:"Novo",preparo:"Em preparo",pronto:"Pronto",entregue:"Entregue",cancelado:"Cancelado"};
+const NEXT={novo:["preparo","Começar preparo"],preparo:["pronto","Marcar como pronto"],pronto:["entregue","Marcar como entregue"]};
+const configured=!SUPABASE_URL.startsWith("COLE");
+const db=configured?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+let cfg={nome_loja:"Minha Lanchonete",mensagem:"",cor_principal:"#15803d",cor_destaque:"#dc2626"};
+let menu=[],orders=[],cart={},subscribed=false;
+let V={mode:"cli",step:"menu",tab:"ped",f:"ativos",last:null,auth:false,err:"",loading:true};
+
+const lines=()=>Object.entries(cart).map(([id,q])=>{const m=menu.find(x=>x.id==id);return m&&q>0?{...m,q}:null}).filter(Boolean);
+const total=()=>lines().reduce((a,l)=>a+l.preco*l.q,0);
+const count=()=>lines().reduce((a,l)=>a+l.q,0);
+
+async function loadCfg(){const{data}=await db.from("configuracao").select("*").eq("id",1).maybeSingle();if(data)cfg=data}
+async function loadMenu(){
+  let q=db.from("itens").select("*").order("categoria").order("id");
+  if(!V.auth||V.mode==="cli")q=q.eq("disponivel",true);
+  const{data,error}=await q;if(error)V.err=error.message;else menu=data||[];
+}
+async function loadOrders(){const{data}=await db.from("pedidos").select("*").order("numero",{ascending:false}).limit(200);orders=data||[]}
+function subscribe(){
+  if(subscribed)return;subscribed=true;
+  db.channel("pedidos").on("postgres_changes",{event:"*",schema:"public",table:"pedidos"},async()=>{await loadOrders();if(V.mode==="loja"&&V.tab==="ped")render()}).subscribe();
+}
+
+function render(){
+  document.documentElement.style.setProperty("--brand",cfg.cor_principal);
+  document.documentElement.style.setProperty("--accent",cfg.cor_destaque);
+  document.title=cfg.nome_loja;
+  $("#app").innerHTML=!configured?setup():V.mode==="cli"?cli():loja();
+}
+
+function setup(){
+  return `<header class="top"><h1>Falta conectar o banco de dados</h1></header><div class="card"><p>Abra este arquivo em um editor de texto e preencha no início do código:</p><p style="margin:8px 0"><b>SUPABASE_URL</b> e <b>SUPABASE_KEY</b></p><p class="mut">Você encontra os dois em Supabase &gt; Project Settings &gt; API.</p></div>`;
+}
+
+function cli(){
+  const head=`<header class="top"><h1>${esc(cfg.nome_loja)}</h1><p class="mut">${esc(cfg.mensagem)}</p></header>`;
+  if(V.loading)return head+`<p class="mut" style="margin-top:20px">Carregando cardápio…</p>`;
+  if(V.step==="done")return head+`<div class="card"><p>Pedido enviado! O número do seu pedido é:</p><div class="big">${num(V.last)}</div><p>Guarde este número e informe à loja ao retirar ou receber.</p><div class="acts"><button data-a="again">Fazer novo pedido</button></div></div>`;
+  if(V.step==="check"){
+    return head+`<h2>Seu pedido</h2>`+lines().map(l=>`<div class="row"><span>${l.q}× ${esc(l.nome)}</span><span class="price">${brl(l.preco*l.q)}</span></div>`).join("")+
+    `<div class="row"><b>Total</b><span class="price">${brl(total())}</span></div>
+    <label for="cn">Seu nome</label><input id="cn" autocomplete="name">
+    <label for="cp">Telefone</label><input id="cp" type="tel" autocomplete="tel">
+    <label>Como quer receber?</label><div class="opts"><label><input type="radio" name="tp" value="Retirada" checked data-a="tp"> Retirar na loja</label><label><input type="radio" name="tp" value="Entrega" data-a="tp"> Entrega</label></div>
+    <div id="ad" hidden><label for="ca">Endereço de entrega</label><input id="ca"></div>
+    <label for="co">Observações (opcional)</label><textarea id="co" rows="2" placeholder="Ex.: sem cebola"></textarea>
+    ${V.err?`<p class="err">${esc(V.err)}</p>`:""}
+    <div class="acts"><button class="ghost" data-a="back">Voltar ao cardápio</button><button data-a="send">Enviar pedido</button></div>`;
+  }
+  let h=head+(V.err?`<p class="err">${esc(V.err)}</p>`:"");
+  if(!menu.length)h+=`<p class="mut" style="margin-top:20px">Nenhum item disponível no momento.</p>`;
+  [...new Set(menu.map(m=>m.categoria))].forEach(c=>{
+    h+=`<h2>${esc(c)}</h2>`;
+    menu.filter(m=>m.categoria===c).forEach(m=>{
+      const q=cart[m.id]||0;
+      h+=`<div class="row"><div><b>${esc(m.nome)}</b><p class="mut">${esc(m.descricao||"")}</p><span class="price">${brl(m.preco)}</span></div>`+
+      (q?`<div class="step"><button class="ghost" data-a="sub" data-id="${m.id}" aria-label="Tirar um">−</button><b>${q}</b><button data-a="add" data-id="${m.id}" aria-label="Adicionar mais um">+</button></div>`:`<button data-a="add" data-id="${m.id}">Adicionar</button>`)+`</div>`;
+    });
+  });
+  h+=`<div class="foot"><button data-a="loja">Área da loja</button></div>`;
+  if(count())h+=`<div class="bar"><button data-a="check"><span>Ver pedido (${count()})</span><span>${brl(total())}</span></button></div>`;
+  return h;
+}
+
+function loja(){
+  const top=`<header class="top"><h1>Painel da loja</h1><p class="mut">${esc(cfg.nome_loja)}</p></header>`;
+  if(!V.auth)return top+`<div class="card"><label for="em">E-mail</label><input id="em" type="email" autocomplete="username"><label for="pw">Senha</label><input id="pw" type="password" autocomplete="current-password">${V.err?`<p class="err">${esc(V.err)}</p>`:""}<div class="acts"><button class="ghost" data-a="exit">Voltar ao site</button><button data-a="login">Entrar</button></div></div>`;
+  let h=top+`<div class="tabs">`+[["ped","Pedidos"],["menu","Cardápio"],["apa","Aparência"]].map(t=>`<button class="${V.tab===t[0]?"on":""}" data-a="tab" data-id="${t[0]}">${t[1]}</button>`).join("")+`<button class="ghost" data-a="logout">Sair</button></div>`;
+  if(V.err)h+=`<p class="err">${esc(V.err)}</p>`;
+  if(V.tab==="ped"){
+    h+=`<div class="tabs">`+[["ativos","Em andamento"],["entregue","Entregues"],["cancelado","Cancelados"]].map(f=>`<button class="${V.f===f[0]?"on":""}" data-a="f" data-id="${f[0]}">${f[1]}</button>`).join("")+`</div>`;
+    const os=orders.filter(o=>V.f==="ativos"?["novo","preparo","pronto"].includes(o.status):o.status===V.f);
+    if(!os.length)h+=`<p class="mut">Nenhum pedido aqui. Pedidos novos aparecem sozinhos, com o número.</p>`;
+    os.forEach(o=>{
+      h+=`<div class="ord ${o.status==="pronto"||o.status==="entregue"?"ok":""}"><div class="hd"><span class="n">#${num(o.numero)}</span><span class="tag">${ST[o.status]}</span></div>
+      <p><b>${esc(o.cliente)}</b> · ${esc(o.telefone)} · ${o.tipo}${o.endereco?": "+esc(o.endereco):""}</p>
+      <ul>${o.itens.map(i=>`<li>${i.qtd}× ${esc(i.nome)}</li>`).join("")}</ul>
+      ${o.observacao?`<p class="mut">Obs.: ${esc(o.observacao)}</p>`:""}
+      <p class="price">${brl(o.total)} <span class="mut" style="font-weight:400">· ${new Date(o.criado_em).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span></p>
+      <div class="acts">${NEXT[o.status]?`<button data-a="next" data-id="${o.numero}">${NEXT[o.status][1]}</button><button class="danger" data-a="cancel" data-id="${o.numero}">Cancelar</button>`:""}</div></div>`;
+    });
+  }
+  if(V.tab==="menu"){
+    h+=`<div class="card" style="margin-top:0"><b>Novo item</b><label for="in">Nome</label><input id="in"><label for="id">Descrição</label><input id="id"><div class="grid2"><div><label for="ip">Preço (R$)</label><input id="ip" type="number" step="0.5" min="0"></div><div><label for="ic">Categoria</label><input id="ic" list="cl" placeholder="Ex.: Lanches"><datalist id="cl">${[...new Set(menu.map(m=>m.categoria))].map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div></div><div class="acts"><button data-a="addItem">Adicionar ao cardápio</button></div></div><h2>Itens cadastrados</h2><p class="mut" style="margin-bottom:8px">Só os itens marcados como disponíveis aparecem para o cliente.</p>`;
+    menu.forEach(m=>{
+      h+=`<div class="row ${m.disponivel?"":"off"}"><div><b>${esc(m.nome)}</b><p class="mut">${esc(m.categoria)}</p></div><div class="step"><input data-ch="${m.id}" type="number" step="0.5" min="0" value="${m.preco}" style="width:90px" aria-label="Preço de ${esc(m.nome)}"><button class="${m.disponivel?"":"ghost"} sm" data-a="tog" data-id="${m.id}">${m.disponivel?"Disponível":"Indisponível"}</button><button class="danger sm" data-a="del" data-id="${m.id}">Remover</button></div></div>`;
+    });
+  }
+  if(V.tab==="apa")h+=`<div class="card" style="margin-top:0"><label for="sn">Nome da loja</label><input id="sn" value="${esc(cfg.nome_loja)}"><label for="sm">Mensagem de boas-vindas</label><textarea id="sm" rows="2">${esc(cfg.mensagem)}</textarea><div class="grid2"><div><label for="sc">Cor principal (verde)</label><input id="sc" type="color" value="${cfg.cor_principal}"></div><div><label for="sd">Cor de destaque (vermelho)</label><input id="sd" type="color" value="${cfg.cor_destaque}"></div></div><div class="acts"><button data-a="saveCfg">Salvar</button></div></div>`;
+  return h;
+}
+
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;
+  const a=b.dataset.a,id=b.dataset.id,v=s=>($(s)||{value:""}).value.trim();
+  if(a==="tp"){$("#ad").hidden=b.value!=="Entrega";return}
+  let r=null;V.err="";
+  if(a==="add")cart[id]=(cart[id]||0)+1;
+  else if(a==="sub")cart[id]=Math.max(0,(cart[id]||0)-1);
+  else if(a==="check")V.step="check";
+  else if(a==="back")V.step="menu";
+  else if(a==="again"){cart={};V.step="menu";await loadMenu()}
+  else if(a==="send"){
+    const keep={cn:v("#cn"),cp:v("#cp"),ca:v("#ca"),co:v("#co")},type=document.querySelector("input[name=tp]:checked").value;
+    const restore=()=>{render();for(const k in keep)$("#"+k).value=keep[k];if(type==="Entrega"){document.querySelector("input[value=Entrega]").checked=true;$("#ad").hidden=false}};
+    if(!keep.cn||!keep.cp||(type==="Entrega"&&!keep.ca)){V.err="Preencha nome, telefone"+(type==="Entrega"?" e endereço":"")+" para enviar.";restore();return}
+    b.disabled=true;
+    const{data,error}=await db.rpc("criar_pedido",{p_cliente:keep.cn,p_telefone:keep.cp,p_tipo:type,p_endereco:type==="Entrega"?keep.ca:"",p_obs:keep.co,p_itens:lines().map(l=>({id:l.id,qtd:l.q}))});
+    if(error){V.err=error.message;await loadMenu();restore();return}
+    V.last=data;V.step="done";cart={};
+  }
+  else if(a==="loja"){V.mode="loja";if(V.auth){await loadMenu();await loadOrders();subscribe()}}
+  else if(a==="exit"){V.mode="cli";await loadMenu()}
+  else if(a==="login"){
+    const{error}=await db.auth.signInWithPassword({email:v("#em"),password:$("#pw").value});
+    if(error)V.err="E-mail ou senha incorretos.";else{V.auth=true;await loadMenu();await loadOrders();subscribe()}
+  }
+  else if(a==="logout"){await db.auth.signOut();V.auth=false;V.mode="cli";await loadMenu()}
+  else if(a==="tab")V.tab=id;
+  else if(a==="f")V.f=id;
+  else if(a==="next"||a==="cancel"){const o=orders.find(x=>x.numero==id);r=await db.from("pedidos").update({status:a==="next"?NEXT[o.status][0]:"cancelado"}).eq("numero",id);await loadOrders()}
+  else if(a==="tog"){const m=menu.find(x=>x.id==id);r=await db.from("itens").update({disponivel:!m.disponivel}).eq("id",id);await loadMenu()}
+  else if(a==="del"){if(!confirm("Remover este item do cardápio?"))return;r=await db.from("itens").delete().eq("id",id);await loadMenu()}
+  else if(a==="addItem"){
+    const nome=v("#in"),preco=parseFloat(v("#ip"));
+    if(!nome||isNaN(preco)){V.err="Informe o nome e o preço do item.";render();return}
+    r=await db.from("itens").insert({nome,descricao:v("#id"),preco,categoria:v("#ic")||"Outros"});await loadMenu();
+  }
+  else if(a==="saveCfg"){
+    const n={nome_loja:v("#sn")||cfg.nome_loja,mensagem:v("#sm"),cor_principal:$("#sc").value,cor_destaque:$("#sd").value};
+    r=await db.from("configuracao").update(n).eq("id",1);if(!r.error)cfg={...cfg,...n};
+  }
+  if(r&&r.error)V.err=r.error.message;
+  render();
+});
+document.addEventListener("change",async e=>{
+  const id=e.target.dataset.ch,p=parseFloat(e.target.value);if(!id||isNaN(p))return;
+  const{error}=await db.from("itens").update({preco:p}).eq("id",id);
+  if(error){V.err=error.message}else await loadMenu();render();
+});
+
+(async()=>{
+  if(!configured){render();return}
+  render();
+  const{data}=await db.auth.getSession();V.auth=!!data.session;
+  await Promise.all([loadCfg(),loadMenu()]);
+  V.loading=false;render();
+})();
+</script>
+</body>
+</html>
