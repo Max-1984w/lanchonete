@@ -60,7 +60,7 @@ input[type=radio]{width:auto}
 const SUPABASE_URL="https://bhapvugvlxbyauqghhoz.supabase.co/rest/v1/";
 const SUPABASE_KEY="sb_publishable_AO2i-oHLIpOGn4YwcHScWQ_6iozPnUs";
 /* ============================================================== */
-
+ 
 const $=s=>document.querySelector(s);
 const brl=n=>Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -71,13 +71,18 @@ const configured=!SUPABASE_URL.startsWith("COLE");
 const db=configured?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
 let cfg={nome_loja:"Minha Lanchonete",mensagem:"",cor_principal:"#15803d",cor_destaque:"#dc2626"};
 let menu=[],orders=[],cart={},subscribed=false;
-let V={mode:"cli",step:"menu",tab:"ped",f:"ativos",last:null,auth:false,err:"",loading:true};
-
+let V={mode:"cli",step:"menu",tab:"ped",f:"ativos",last:null,auth:false,user:null,perfil:{},aba:"entrar",mine:[],msg:"",err:"",loading:true};
+ 
 const lines=()=>Object.entries(cart).map(([id,q])=>{const m=menu.find(x=>x.id==id);return m&&q>0?{...m,q}:null}).filter(Boolean);
 const total=()=>lines().reduce((a,l)=>a+l.preco*l.q,0);
 const count=()=>lines().reduce((a,l)=>a+l.q,0);
-
+ 
 async function loadCfg(){const{data}=await db.from("configuracao").select("*").eq("id",1).maybeSingle();if(data)cfg=data}
+async function loadMe(){
+  const{data:s}=await db.auth.getSession();V.user=s.session?s.session.user:null;V.auth=false;V.perfil={};
+  if(V.user){const{data}=await db.from("perfis").select("*").eq("id",V.user.id).maybeSingle();V.perfil=data||{};V.auth=V.perfil.papel==="vendedor"}
+}
+async function loadMine(){const{data}=await db.from("pedidos").select("*").order("numero",{ascending:false}).limit(30);V.mine=data||[]}
 async function loadMenu(){
   let q=db.from("itens").select("*").order("categoria").order("id");
   if(!V.auth||V.mode==="cli")q=q.eq("disponivel",true);
@@ -88,27 +93,29 @@ function subscribe(){
   if(subscribed)return;subscribed=true;
   db.channel("pedidos").on("postgres_changes",{event:"*",schema:"public",table:"pedidos"},async()=>{await loadOrders();if(V.mode==="loja"&&V.tab==="ped")render()}).subscribe();
 }
-
+ 
 function render(){
   document.documentElement.style.setProperty("--brand",cfg.cor_principal);
   document.documentElement.style.setProperty("--accent",cfg.cor_destaque);
   document.title=cfg.nome_loja;
-  $("#app").innerHTML=!configured?setup():V.mode==="cli"?cli():loja();
+  $("#app").innerHTML=!configured?setup():V.mode==="conta"?conta():V.mode==="cli"?cli():loja();
 }
-
+ 
 function setup(){
   return `<header class="top"><h1>Falta conectar o banco de dados</h1></header><div class="card"><p>Abra este arquivo em um editor de texto e preencha no início do código:</p><p style="margin:8px 0"><b>SUPABASE_URL</b> e <b>SUPABASE_KEY</b></p><p class="mut">Você encontra os dois em Supabase &gt; Project Settings &gt; API.</p></div>`;
 }
-
+ 
 function cli(){
-  const head=`<header class="top"><h1>${esc(cfg.nome_loja)}</h1><p class="mut">${esc(cfg.mensagem)}</p></header>`;
+  const who=V.user?`<p style="margin-top:8px"><span class="mut">Olá, ${esc(V.perfil.nome||V.user.email)}</span> `+(V.auth?`<button class="ghost sm" data-a="loja">Painel da loja</button> `:`<button class="ghost sm" data-a="meus">Meus pedidos</button> `)+`<button class="ghost sm" data-a="logout">Sair</button></p>`:`<p style="margin-top:8px"><button class="ghost sm" data-a="conta">Entrar ou criar conta</button></p>`;
+  const head=`<header class="top"><h1>${esc(cfg.nome_loja)}</h1><p class="mut">${esc(cfg.mensagem)}</p>${who}</header>`;
   if(V.loading)return head+`<p class="mut" style="margin-top:20px">Carregando cardápio…</p>`;
   if(V.step==="done")return head+`<div class="card"><p>Pedido enviado! O número do seu pedido é:</p><div class="big">${num(V.last)}</div><p>Guarde este número e informe à loja ao retirar ou receber.</p><div class="acts"><button data-a="again">Fazer novo pedido</button></div></div>`;
+  if(V.step==="meus")return head+`<h2>Meus pedidos</h2>`+(V.mine.length?V.mine.map(o=>`<div class="ord ${o.status==="pronto"||o.status==="entregue"?"ok":""}"><div class="hd"><span class="n">#${num(o.numero)}</span><span class="tag">${ST[o.status]}</span></div><ul>${o.itens.map(i=>`<li>${i.qtd}× ${esc(i.nome)}</li>`).join("")}</ul><p class="price">${brl(o.total)}</p></div>`).join(""):`<p class="mut">Você ainda não fez pedidos.</p>`)+`<div class="acts"><button class="ghost" data-a="back">Voltar ao cardápio</button><button data-a="meus">Atualizar</button></div>`;
   if(V.step==="check"){
     return head+`<h2>Seu pedido</h2>`+lines().map(l=>`<div class="row"><span>${l.q}× ${esc(l.nome)}</span><span class="price">${brl(l.preco*l.q)}</span></div>`).join("")+
     `<div class="row"><b>Total</b><span class="price">${brl(total())}</span></div>
-    <label for="cn">Seu nome</label><input id="cn" autocomplete="name">
-    <label for="cp">Telefone</label><input id="cp" type="tel" autocomplete="tel">
+    <label for="cn">Seu nome</label><input id="cn" autocomplete="name" value="${esc(V.perfil.nome||"")}">
+    <label for="cp">Telefone</label><input id="cp" type="tel" autocomplete="tel" value="${esc(V.perfil.telefone||"")}">
     <label>Como quer receber?</label><div class="opts"><label><input type="radio" name="tp" value="Retirada" checked data-a="tp"> Retirar na loja</label><label><input type="radio" name="tp" value="Entrega" data-a="tp"> Entrega</label></div>
     <div id="ad" hidden><label for="ca">Endereço de entrega</label><input id="ca"></div>
     <label for="co">Observações (opcional)</label><textarea id="co" rows="2" placeholder="Ex.: sem cebola"></textarea>
@@ -129,7 +136,17 @@ function cli(){
   if(count())h+=`<div class="bar"><button data-a="check"><span>Ver pedido (${count()})</span><span>${brl(total())}</span></button></div>`;
   return h;
 }
-
+ 
+function conta(){
+  const A=V.aba,vend=A==="vendedor",novo=A!=="entrar";
+  return `<header class="top"><h1>${esc(cfg.nome_loja)}</h1><p class="mut">Entre ou crie sua conta</p></header><div class="tabs">`+[["entrar","Entrar"],["cliente","Criar conta de cliente"],["vendedor","Criar conta de vendedor"]].map(t=>`<button class="${A===t[0]?"on":""}" data-a="aba" data-id="${t[0]}">${t[1]}</button>`).join("")+`</div><div class="card" style="margin-top:0">`+
+  (novo?`<label for="rn">Nome</label><input id="rn" autocomplete="name"><label for="rt">Telefone</label><input id="rt" type="tel" autocomplete="tel">`:"")+
+  `<label for="em">E-mail</label><input id="em" type="email" autocomplete="username"><label for="pw">Senha${novo?" (mínimo 6 caracteres)":""}</label><input id="pw" type="password" autocomplete="${novo?"new-password":"current-password"}">`+
+  (vend?`<label for="rc">Código da loja</label><input id="rc" placeholder="Fornecido pelo dono da loja">`:"")+
+  (V.err?`<p class="err">${esc(V.err)}</p>`:"")+(V.msg?`<p style="margin-top:8px;font-weight:600">${esc(V.msg)}</p>`:"")+
+  `<div class="acts"><button class="ghost" data-a="exit">Voltar ao site</button><button data-a="${novo?"signup":"login"}">${novo?"Criar conta":"Entrar"}</button></div></div>`;
+}
+ 
 function loja(){
   const top=`<header class="top"><h1>Painel da loja</h1><p class="mut">${esc(cfg.nome_loja)}</p></header>`;
   if(!V.auth)return top+`<div class="card"><label for="em">E-mail</label><input id="em" type="email" autocomplete="username"><label for="pw">Senha</label><input id="pw" type="password" autocomplete="current-password">${V.err?`<p class="err">${esc(V.err)}</p>`:""}<div class="acts"><button class="ghost" data-a="exit">Voltar ao site</button><button data-a="login">Entrar</button></div></div>`;
@@ -157,7 +174,7 @@ function loja(){
   if(V.tab==="apa")h+=`<div class="card" style="margin-top:0"><label for="sn">Nome da loja</label><input id="sn" value="${esc(cfg.nome_loja)}"><label for="sm">Mensagem de boas-vindas</label><textarea id="sm" rows="2">${esc(cfg.mensagem)}</textarea><div class="grid2"><div><label for="sc">Cor principal (verde)</label><input id="sc" type="color" value="${cfg.cor_principal}"></div><div><label for="sd">Cor de destaque (vermelho)</label><input id="sd" type="color" value="${cfg.cor_destaque}"></div></div><div class="acts"><button data-a="saveCfg">Salvar</button></div></div>`;
   return h;
 }
-
+ 
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]");if(!b)return;
   const a=b.dataset.a,id=b.dataset.id,v=s=>($(s)||{value:""}).value.trim();
@@ -177,13 +194,30 @@ document.addEventListener("click",async e=>{
     if(error){V.err=error.message;await loadMenu();restore();return}
     V.last=data;V.step="done";cart={};
   }
-  else if(a==="loja"){V.mode="loja";if(V.auth){await loadMenu();await loadOrders();subscribe()}}
+  else if(a==="loja"){V.mode=V.auth?"loja":"conta";if(V.auth){await loadMenu();await loadOrders();subscribe()}}
+  else if(a==="conta"){V.mode="conta";V.aba="entrar";V.msg=""}
+  else if(a==="aba"){V.aba=id;V.msg=""}
+  else if(a==="meus"){await loadMine();V.step="meus"}
+  else if(a==="signup"){
+    const nome=v("#rn"),tel=v("#rt"),email=v("#em"),senha=$("#pw").value,cod=v("#rc"),vend=V.aba==="vendedor";
+    if(!nome||!email||senha.length<6)V.err="Preencha nome, e-mail e uma senha de 6 ou mais caracteres.";
+    else{
+      let ok=true;
+      if(vend){const{data}=await db.rpc("codigo_vendedor_valido",{p_codigo:cod});ok=data===true;if(!ok)V.err="Código da loja incorreto."}
+      if(ok){
+        const{data,error}=await db.auth.signUp({email,password:senha,options:{data:{nome,telefone:tel,codigo:vend?cod:null}}});
+        if(error)V.err=error.message;
+        else if(!data.session)V.msg="Conta criada! Confirme pelo link enviado ao seu e-mail e depois clique em Entrar.";
+        else{await loadMe();V.mode=V.auth?"loja":"cli";V.step="menu";await loadMenu();if(V.auth){await loadOrders();subscribe()}}
+      }
+    }
+  }
   else if(a==="exit"){V.mode="cli";await loadMenu()}
   else if(a==="login"){
     const{error}=await db.auth.signInWithPassword({email:v("#em"),password:$("#pw").value});
-    if(error)V.err="E-mail ou senha incorretos.";else{V.auth=true;await loadMenu();await loadOrders();subscribe()}
+    if(error)V.err="E-mail ou senha incorretos.";else{await loadMe();if(V.auth){V.mode="loja";await loadMenu();await loadOrders();subscribe()}else{V.mode="cli";V.step="menu";await loadMenu()}}
   }
-  else if(a==="logout"){await db.auth.signOut();V.auth=false;V.mode="cli";await loadMenu()}
+  else if(a==="logout"){await db.auth.signOut();V.auth=false;V.user=null;V.perfil={};V.step="menu";V.mode="cli";await loadMenu()}
   else if(a==="tab")V.tab=id;
   else if(a==="f")V.f=id;
   else if(a==="next"||a==="cancel"){const o=orders.find(x=>x.numero==id);r=await db.from("pedidos").update({status:a==="next"?NEXT[o.status][0]:"cancelado"}).eq("numero",id);await loadOrders()}
@@ -199,21 +233,24 @@ document.addEventListener("click",async e=>{
     r=await db.from("configuracao").update(n).eq("id",1);if(!r.error)cfg={...cfg,...n};
   }
   if(r&&r.error)V.err=r.error.message;
+  const F=["rn","rt","em","rc"],sv=F.map(i=>$("#"+i)&&$("#"+i).value);
   render();
+  if(V.mode==="conta")F.forEach((i,k)=>{if($("#"+i)&&sv[k])$("#"+i).value=sv[k]});
 });
 document.addEventListener("change",async e=>{
   const id=e.target.dataset.ch,p=parseFloat(e.target.value);if(!id||isNaN(p))return;
   const{error}=await db.from("itens").update({preco:p}).eq("id",id);
   if(error){V.err=error.message}else await loadMenu();render();
 });
-
+ 
 (async()=>{
   if(!configured){render();return}
   render();
-  const{data}=await db.auth.getSession();V.auth=!!data.session;
+  await loadMe();
   await Promise.all([loadCfg(),loadMenu()]);
   V.loading=false;render();
 })();
 </script>
 </body>
 </html>
+ 
