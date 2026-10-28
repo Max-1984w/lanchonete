@@ -8,7 +8,7 @@
 <title>Pedidos online</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
 <style>
-:root{--bg:#f6f7f3;--card:#fff;--ink:#1f2a24;--mut:#66726b;--line:#e2e6df;--brand:#15803d;--accent:#dc2626;color-scheme:light}
+:root{--bg:#ffffff;--card:#fff;--ink:#241f1e;--mut:#6f6663;--line:#eee8e6;--brand:#c8102e;--accent:#9f1239;color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121815;--card:#1c2520;--ink:#eef2ec;--mut:#9aa79f;--line:#2c3731;color-scheme:dark}}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Bricolage Grotesque",system-ui,sans-serif;overflow-x:hidden}
@@ -77,7 +77,7 @@ const ST={novo:"Novo",preparo:"Em preparo",pronto:"Pronto",entregue:"Entregue",c
 const NEXT={novo:["preparo","Começar preparo"],preparo:["pronto","Marcar como pronto"],pronto:["entregue","Marcar como entregue"]};
 const configured=!SUPABASE_URL.startsWith("COLE");
 const db=configured?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
-let cfg={chave_pix:"",nome_loja:"Minha Lanchonete",mensagem:"",cor_principal:"#15803d",cor_destaque:"#dc2626"};
+let cfg={chave_pix:"",nome_loja:"Minha Lanchonete",mensagem:"",cor_principal:"#c8102e",cor_destaque:"#9f1239"};
 let menu=[],orders=[],cart={},subscribed=false;
 let V={mode:"cli",step:"menu",tab:"ped",f:"ativos",last:null,auth:false,user:null,perfil:{},aba:"entrar",mine:[],msg:"",err:"",loading:true};
 
@@ -104,7 +104,7 @@ function subscribe(){
   db.channel("pedidos").on("postgres_changes",{event:"*",schema:"public",table:"pedidos"},async()=>{await loadOrders();if(V.mode==="loja"&&V.tab==="ped")render()}).subscribe();
 }
 
-function render(){
+function render(){const hx=/^#[0-9a-f]{6}$/i,st=document.documentElement.style;if(hx.test(cfg.cor_principal))st.setProperty("--brand",cfg.cor_principal);if(hx.test(cfg.cor_destaque))st.setProperty("--accent",cfg.cor_destaque);
   document.documentElement.style.setProperty("--brand",cfg.cor_principal);
   document.documentElement.style.setProperty("--accent",cfg.cor_destaque);
   document.title=cfg.nome_loja;
