@@ -58,6 +58,10 @@ input[type=radio]{width:20px;height:20px;padding:0;flex:none}
 .err{color:var(--accent);font-weight:600;margin-top:8px}
 .foot{margin-top:30px;text-align:center}.foot button{background:none;color:var(--mut);font-weight:400;text-decoration:underline}
 .off{opacity:.55}
+.chips{display:flex;gap:8px;overflow-x:auto;position:sticky;top:0;z-index:2;background:var(--bg);margin:8px -14px 0;padding:10px 14px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chips a{flex:none;padding:8px 14px;border:1px solid var(--line);border-radius:99px;color:var(--ink);text-decoration:none;font-weight:600;font-size:.9rem}
+h2{scroll-margin-top:64px}.row.pr{align-items:center}.row.pr>.ph{flex:none;width:84px;height:84px;border-radius:12px;overflow:hidden;background:var(--line);display:grid;place-items:center;font-size:1.6rem;opacity:.9}
+.ph img{width:100%;height:100%;object-fit:cover}.row.pr>.pi{min-width:0;flex:1}
 </style>
 </head>
 <body>
@@ -65,8 +69,8 @@ input[type=radio]{width:20px;height:20px;padding:0;flex:none}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* ===== CONFIGURE AQUI (Supabase > Project Settings > API) ===== */
-const SUPABASE_URL="https://bhapvugvlxbyauqghhoz.supabase.co";
-const SUPABASE_KEY="sb_publishable_AO2i-oHLIpOGn4YwcHScWQ_6iozPnUs";
+const SUPABASE_URL="COLE_AQUI_A_URL_DO_PROJETO";
+const SUPABASE_KEY="COLE_AQUI_A_CHAVE_ANON_PUBLIC";
 /* ============================================================== */
 
 const $=s=>document.querySelector(s);
@@ -95,7 +99,6 @@ async function loadMe(){
 async function loadMine(){const{data}=await db.from("pedidos").select("*").order("numero",{ascending:false}).limit(30);V.mine=data||[]}
 async function loadMenu(){
   let q=db.from("itens").select("*").order("categoria").order("id");
-  if(!V.auth||V.mode==="cli")q=q.eq("disponivel",true);
   const{data,error}=await q;if(error)V.err=error.message;else menu=data||[];
 }
 async function loadOrders(){const{data}=await db.from("pedidos").select("*").order("numero",{ascending:false}).limit(200);orders=data||[]}
@@ -135,12 +138,13 @@ function cli(){
   }
   let h=head+(V.err?`<p class="err">${esc(V.err)}</p>`:"");
   if(!menu.length)h+=`<p class="mut" style="margin-top:20px">Nenhum item disponível no momento.</p>`;
-  [...new Set(menu.map(m=>m.categoria))].forEach(c=>{
-    h+=`<h2>${esc(c)}</h2>`;
+  const CT=[...new Set(menu.map(m=>m.categoria))];if(CT.length>1)h+=`<nav class="chips" aria-label="Categorias">${CT.map((c,i)=>`<a href="#c${i}">${esc(c)}</a>`).join("")}</nav>`;
+  CT.forEach((c,i)=>{
+    h+=`<h2 id="c${i}">${esc(c)}</h2>`;
     menu.filter(m=>m.categoria===c).forEach(m=>{
       const q=cart[m.id]||0;
-      h+=`<div class="row"><div><b>${esc(m.nome)}</b><p class="mut">${esc(m.descricao||"")}</p><span class="price">${brl(m.preco)}</span></div>`+
-      (q?`<div class="step"><button class="ghost" data-a="sub" data-id="${m.id}" aria-label="Tirar um">−</button><b>${q}</b><button data-a="add" data-id="${m.id}" aria-label="Adicionar mais um">+</button></div>`:`<button data-a="add" data-id="${m.id}">Adicionar</button>`)+`</div>`;
+      h+=`<div class="row pr${m.disponivel?"":" off"}"><div class="ph">${m.foto_url?`<img src="${esc(m.foto_url)}" alt="" loading="lazy" decoding="async">`:"🍽"}</div><div class="pi"><b>${esc(m.nome)}</b><p class="mut">${esc(m.descricao||"")}</p><span class="price">${brl(m.preco)}</span></div>`+
+      (!m.disponivel?`<span class="tag">Indisponível</span>`:q?`<div class="step"><button class="ghost" data-a="sub" data-id="${m.id}" aria-label="Tirar um">−</button><b>${q}</b><button data-a="add" data-id="${m.id}" aria-label="Adicionar mais um">+</button></div>`:`<button data-a="add" data-id="${m.id}">Adicionar</button>`)+`</div>`;
     });
   });
   h+=`<div class="foot"><button data-a="loja">Área da loja</button></div>`;
