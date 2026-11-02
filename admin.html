@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Painel da loja</title>
+<meta name="robots" content="noindex,nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--or:#f97316;--or2:#ea580c;--red:#9f1d1d;--ink:#171717;--g1:#f5f5f4;--g2:#e7e5e4;--g5:#78716c;--sh:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(23,23,23,.06)}
@@ -57,9 +58,15 @@ textarea{width:100%;font:inherit;padding:12px;border:1px solid var(--g2);border-
 .pl{display:flex;gap:12px;align-items:center;padding:12px;margin-bottom:10px}
 .pl img,.pl .ph{width:64px;height:64px;border-radius:12px;object-fit:cover;background:var(--g2);flex:none;display:grid;place-items:center;color:var(--g5)}
 .pl .pi{flex:1;min-width:0}.pl .pi b{overflow-wrap:anywhere}.pl .bt{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.pl.off .pi,.pl.off img{opacity:.5}
+.pl{flex-wrap:wrap}.pl .pi{flex:1 1 150px}@media(max-width:560px){.pl .bt{flex:1 1 100%;justify-content:flex-start}}
 dialog{border:0;border-radius:20px;padding:20px;width:min(94vw,460px);box-shadow:0 20px 60px rgba(0,0,0,.25)}dialog::backdrop{background:rgba(23,23,23,.5)}
 dialog label{display:block;font-weight:600;margin:12px 0 4px}
-.dz{display:grid!important;place-items:center;gap:6px;border:2px dashed var(--g2);border-radius:14px;padding:16px;text-align:center;color:var(--g5);cursor:pointer;font-weight:500!important}.dz.on{border-color:var(--or);background:#fff7f0}.dz img{max-width:100%;max-height:180px;border-radius:10px}
+.pf{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.dz{width:112px;height:112px;flex:none;border:2px dashed var(--g2);border-radius:16px;display:grid;place-items:center;overflow:hidden;color:var(--g5);background:var(--g1);transition:border-color .15s,background .15s}.dz.on{border-color:var(--or);background:#fff7f0}.dz.has{border-style:solid}
+.dz img{width:100%;height:100%;object-fit:cover;display:block}.dz .ic{width:32px;height:32px}
+.pa{flex:1 1 170px;min-width:0;display:grid;gap:8px;justify-items:start}.pa p{font-size:.82rem}
+button.pk{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px}button.pk .ic{width:18px;height:18px}
+button.rm{background:none;color:var(--red);min-height:36px;padding:0 4px;font-size:.88rem;text-decoration:underline;text-underline-offset:3px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom,0px));background:#171717;color:#fff;padding:12px 18px;border-radius:12px;z-index:20;font-weight:600}
 .oc.nv{box-shadow:0 0 0 2px var(--or),var(--sh)}
 @media(max-width:860px){
@@ -80,7 +87,7 @@ let db,P=[],M=[],SQ="",E={},cfg={},G="d",view="home",CH=[];
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const brl=n=>Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const hm=d=>new Date(d).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-const IC={home:"M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",list:"M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1zM8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2M9 12h6M9 16h4",money:"M12 2v20M17 6H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6",bag:"M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0",clock:"M12 6v6l4 2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z",fire:"M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-4 3-6 1 1 1 2 2 2 0-3 0-5 1-8z",check:"M20 6L9 17l-5-5",receipt:"M4 2v20l3-2 2 2 3-2 3 2 2-2 3 2V2zM8 7h8M8 11h8M8 15h5",trophy:"M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3",out:"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",grid:"M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",truck:"M1 3h15v13H1zM16 8h4l3 3v5h-7zM5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"};
+const IC={home:"M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",list:"M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1zM8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2M9 12h6M9 16h4",money:"M12 2v20M17 6H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6",bag:"M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0",clock:"M12 6v6l4 2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z",fire:"M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-4 3-6 1 1 1 2 2 2 0-3 0-5 1-8z",check:"M20 6L9 17l-5-5",receipt:"M4 2v20l3-2 2 2 3-2 3 2 2-2 3 2V2zM8 7h8M8 11h8M8 15h5",trophy:"M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3",out:"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",grid:"M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",cam:"M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",truck:"M1 3h15v13H1zM16 8h4l3 3v5h-7zM5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"};
 const ic=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${IC[n]}"/></svg>`;
 const COLS=[["novo","Novos pedidos"],["aguardando","Aguardando confirmação"],["preparo","Em preparação"],["pronto","Prontos"],["saiu","Saiu para entrega"],["entregue","Concluídos"],["cancelado","Cancelados"]];
 const LBL=Object.fromEntries(COLS);
@@ -97,7 +104,7 @@ function buckets(){const n=G==="d"?14:G==="s"?8:6,now=new Date(),out=[];
     b=new Date(a);G==="d"?b.setDate(b.getDate()+1):G==="s"?b.setDate(b.getDate()+7):b.setMonth(b.getMonth()+1);
     out.push({a,b,l:G==="m"?a.toLocaleDateString("pt-BR",{month:"short"}):a.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})}
   return out}
-function top(){const m={};live().filter(o=>inR(o,day(30),day(-1))).forEach(o=>o.itens.forEach(i=>m[i.nome]=(m[i.nome]||0)+i.qtd));return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5)}
+function topVendidos(){const m={};live().filter(o=>inR(o,day(30),day(-1))).forEach(o=>o.itens.forEach(i=>m[i.nome]=(m[i.nome]||0)+i.qtd));return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5)}
 
 function shell(inner){const nw=P.filter(o=>o.status==="novo").length;
   return `<div class="app"><aside><div class="logo"><i>${ic("bag")}</i>${esc(cfg.nome_loja||"Minha loja")}</div>
@@ -108,7 +115,7 @@ function shell(inner){const nw=P.filter(o=>o.status==="novo").length;
 
 function home(){
   const t=live().filter(o=>inR(o,day(0),day(-1))),y=live().filter(o=>inR(o,day(1),day(0)));
-  const ft=sum(t),fy=sum(y),tm=t.length?ft/t.length:0,tmy=y.length?fy/y.length:0,cnt=s=>P.filter(o=>o.status===s).length,tp=top();
+  const ft=sum(t),fy=sum(y),tm=t.length?ft/t.length:0,tmy=y.length?fy/y.length:0,cnt=s=>P.filter(o=>o.status===s).length,tp=topVendidos();
   const mx=tp.length?tp[0][1]:1;
   return `<div class="hd"><div><h1>Visão geral</h1><p class="mut">${new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</p></div>
   <div class="seg">${[["d","Dia"],["s","Semana"],["m","Mês"]].map(x=>`<button class="${G===x[0]?"on":""}" data-g="${x[0]}">${x[1]}</button>`).join("")}</div></div>
@@ -156,13 +163,19 @@ async function prep(f){if(!/^image\/(jpeg|png|webp)$/.test(f.type))throw new Err
   let bm;try{bm=await createImageBitmap(f)}catch(x){throw new Error("Não consegui ler essa imagem. Tente outra foto.")}
   const r=Math.min(1,900/Math.max(bm.width,bm.height)),c=document.createElement("canvas");c.width=Math.round(bm.width*r);c.height=Math.round(bm.height*r);c.getContext("2d").drawImage(bm,0,0,c.width,c.height);
   return new Promise((ok,no)=>c.toBlob(b=>b?ok(b):no(new Error("Não consegui processar a foto.")),"image/webp",.82))}
-function pshow(){const u=E.blob?E.prev:(E.rm?"":E.foto);$i("pv").innerHTML=u?`<img src="${u}" alt="Prévia da foto">`:ic("bag");$i("pt").textContent=u?"Toque ou arraste para trocar a foto":"Toque ou arraste uma foto (JPG, PNG ou WebP, até 5 MB)";$i("pr").hidden=!u}
-async function pick(f){$i("pe").textContent="";if(!f)return;try{E.blob=await prep(f);E.prev=URL.createObjectURL(E.blob);E.rm=false;pshow()}catch(x){$i("pe").textContent=x.message}}
-function openProd(id){const m=M.find(x=>x.id==id)||{};E={id:m.id||null,foto:m.foto_url||"",blob:null,rm:false};
+function pshow(){const u=E.blob?E.prev:(E.rm?"":E.foto);
+  $i("pv").innerHTML=u?`<img src="${esc(u)}" alt="Prévia da foto do produto">`:ic("cam");$i("pv").classList.toggle("has",!!u);
+  $i("pb").innerHTML=`${ic("cam")}${u?"Trocar foto":"Adicionar foto"}`;
+  $i("pt").textContent=E.blob?"Prévia da nova foto. Ela só é enviada quando você tocar em Salvar produto.":u?"Foto atual do produto.":"JPG, PNG ou WebP, até 5 MB. Você também pode arrastar a foto para o quadro.";
+  $i("pr").hidden=!u}
+async function pick(f){$i("pe").textContent="";if(!f)return;$i("pb").disabled=true;$i("pt").textContent="Preparando a foto…";
+  try{const b=await prep(f);if(E.prev)URL.revokeObjectURL(E.prev);E.blob=b;E.prev=URL.createObjectURL(b);E.rm=false}catch(x){$i("pe").textContent=x.message}
+  $i("pb").disabled=false;pshow()}
+function openProd(id){const m=M.find(x=>x.id==id)||{};E={id:m.id||null,foto:m.foto_url||"",blob:null,prev:"",rm:false};
   $i("dg").innerHTML=`<h2>${id?"Editar produto":"Novo produto"}</h2><label for="pn">Nome</label><input id="pn" value="${esc(m.nome||"")}" maxlength="80"><label for="pd">Descrição (opcional)</label><textarea id="pd" rows="2" maxlength="160">${esc(m.descricao||"")}</textarea>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label for="pp">Preço (R$)</label><input id="pp" inputmode="decimal" value="${m.preco!=null?m.preco:""}" placeholder="0,00"></div><div><label for="pc">Categoria</label><input id="pc" list="cl" value="${esc(m.categoria||"")}" placeholder="Ex.: Hambúrgueres"><datalist id="cl">${[...new Set(M.map(x=>x.categoria))].map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div></div>
-  <label for="pf">Foto</label><label class="dz" for="pf" style="margin:0"><span id="pv"></span><span id="pt"></span></label><input id="pf" type="file" accept="image/jpeg,image/png,image/webp" hidden><button class="ghost sm" id="pr" data-rf style="margin-top:8px">Remover foto</button>
-  <p class="err" id="pe" role="alert"></p><div style="display:flex;gap:8px;margin-top:16px"><button class="ghost" style="flex:1" data-cx>Cancelar</button><button class="pri" style="flex:1" data-sv>Salvar produto</button></div>`;pshow();$i("dg").showModal()}
+  <label for="pb">Foto do produto</label><div class="pf"><div class="dz" id="pv"></div><div class="pa"><button type="button" class="ghost pk" id="pb" data-pk></button><button type="button" class="rm" id="pr" data-rf>Remover foto</button><p class="mut" id="pt"></p></div></div><input id="pf" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+  <p class="err" id="pe" role="alert"></p><div style="display:flex;gap:8px;margin-top:16px"><button class="ghost" style="flex:0 0 auto" data-cx>Cancelar</button><button class="pri" style="flex:1" data-sv>Salvar produto</button></div>`;pshow();$i("dg").showModal()}
 const rmFoto=async u=>{const p=(u.split("/produtos/")[1]||"").split("?")[0];if(p)await db.storage.from("produtos").remove([p])};
 async function saveProd(b){const e=$i("pe"),nome=$i("pn").value.trim(),preco=parseFloat($i("pp").value.replace(",","."));
   if(!nome){e.textContent="Informe o nome do produto.";return}if(!(preco>=0)){e.textContent="Informe um preço válido, como 18,50.";return}
@@ -199,12 +212,13 @@ document.addEventListener("click",async e=>{const b=e.target.closest("button");i
   else if(b.dataset.dl){const m=M.find(x=>x.id==b.dataset.dl);if(!confirm("Excluir “"+m.nome+"”? Isso não pode ser desfeito."))return;const{error}=await db.from("itens").delete().eq("id",m.id);if(error)return toast("Não foi possível excluir.");if(m.foto_url)try{await rmFoto(m.foto_url)}catch(x){}toast("Produto excluído");await load()}
   else if(b.hasAttribute("data-sv"))saveProd(b);
   else if(b.hasAttribute("data-cx"))$i("dg").close();
-  else if(b.hasAttribute("data-rf")){E.blob=null;E.rm=true;pshow()}
+  else if(b.hasAttribute("data-pk"))$i("pf").click();
+  else if(b.hasAttribute("data-rf")){E.blob=null;E.rm=true;$i("pf").value="";pshow()}
   else if(b.dataset.s){const id=b.dataset.id;if(b.dataset.s==="cancelado"&&!confirm("Cancelar o pedido #"+id+"?"))return;
     b.disabled=true;const{error}=await db.from("pedidos").update({status:b.dataset.s}).eq("numero",id);
     if(error){alert("Não foi possível atualizar: "+error.message);b.disabled=false}else await load()}});
 document.addEventListener("input",e=>{if(e.target.hasAttribute("data-f")){SQ=e.target.value.trim().toLowerCase();filt()}});
-document.addEventListener("change",e=>{if(e.target.id==="pf")pick(e.target.files[0])});
+document.addEventListener("change",e=>{if(e.target.id==="pf"){const f=e.target.files[0];e.target.value="";pick(f)}});
 document.addEventListener("dragover",e=>{const z=e.target.closest&&e.target.closest(".dz");if(z){e.preventDefault();z.classList.add("on")}});
 document.addEventListener("dragleave",e=>{const z=e.target.closest&&e.target.closest(".dz");if(z)z.classList.remove("on")});
 document.addEventListener("drop",e=>{const z=e.target.closest&&e.target.closest(".dz");if(z){e.preventDefault();z.classList.remove("on");pick(e.dataTransfer.files[0])}});
